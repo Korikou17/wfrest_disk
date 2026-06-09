@@ -1,0 +1,44 @@
+# ===================
+# 编译产物
+# ===================
+build/
+server
+
+# ===================
+# CMake 生成文件
+# ===================
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# ===================
+# 编译中间文件
+# ===================
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dylib
+*.dll
+
+# ===================
+# IDE / 编辑器
+# ===================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ===================
+# 其他
+# ===================
+*.log
+*.tmp
+core
