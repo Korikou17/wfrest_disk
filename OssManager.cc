@@ -4,26 +4,10 @@
 
 using namespace std;
 
-OssManager *OssManager::getInstance()
+OssManager &OssManager::getInstance()
     {
-        if(!m_pInstance)
-        {
-            m_pInstance=new OssManager{};
-            InitializeSdk();
-            atexit(&destroyInstance);
-        }
-        return m_pInstance;
-    }
-
-void OssManager::destroyInstance()
-    {
-        if(m_pInstance)
-        {
-            ShutdownSdk();
-            cout<<"AliyunSDK Shutdown"<<endl;
-            delete m_pInstance;
-            m_pInstance=nullptr;
-        }
+        static OssManager instance;
+        return instance;
     }
 
 
@@ -44,4 +28,3 @@ bool OssManager::upload(string filename,string content)
     return true;
 }
 
-OssManager *OssManager::m_pInstance=nullptr;

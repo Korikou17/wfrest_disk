@@ -348,7 +348,7 @@ void CloudDiskServer::register_file_module()
                 mkdir(dir_path.c_str(),0755);
 
                 resp->Save(file_path, move(content));
-                OssManager::getInstance()->upload(file_path,content);
+                OssManager::getInstance().upload(file_path,content);
                 
                 json result;
                 int fileid=cursor->get_insert_id();

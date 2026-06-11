@@ -10,9 +10,7 @@ using namespace AlibabaCloud::OSS;
 class OssManager
 {
 public:
-    static OssManager *getInstance();
-
-    static void destroyInstance();
+    static OssManager &getInstance();
 
     OssManager(const OssManager&)=delete;
     OssManager& operator=(const OssManager &)=delete;
@@ -22,9 +20,12 @@ private:
     OssManager()
     :conf()
     ,m_client("oss-cn-wuhan-lr.aliyuncs.com", Config::getInstance().ossAccessKeyId(),Config::getInstance().ossAccessKeySecret(),conf)
-    {}
-    ~OssManager(){}
-    static OssManager *m_pInstance;
+    {
+        InitializeSdk();
+    }
+    ~OssManager(){
+        ShutdownSdk();
+    }
     ClientConfiguration conf;
     OssClient m_client;
 };
