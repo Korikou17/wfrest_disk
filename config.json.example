@@ -1,0 +1,15 @@
+{
+    "oss": {
+        "endpoint": "oss-cn-wuhan-lr.aliyuncs.com",
+        "accessKeyId": "YOUR_ACCESS_KEY_ID",
+        "accessKeySecret": "YOUR_ACCESS_KEY_SECRET",
+        "region": "cn-wuhan",
+        "bucketName": "your-bucket-name"
+    },
+    "database": {
+        "url": "mysql://root:YOUR_PASSWORD@localhost/disk"
+    },
+    "server": {
+        "port": 8888
+    }
+}

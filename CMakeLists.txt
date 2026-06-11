@@ -15,6 +15,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../)
 
 # 生成的可执行程序
 add_executable(server
+    Config.cc
     CryptoUtil.cc
     CloudDiskServer.cc
     OssManager.cc
