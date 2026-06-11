@@ -18,7 +18,7 @@ using namespace protocol;
 using json = nlohmann::json;
 
 // 数据库的URL（从配置文件读取）
-static const string DatabaseURL = Config::getInstance().databaseURL();
+static const string DatabaseURL = "mysql://root:123@localhost/disk";
 static const int RetryMax = 3;
 
 

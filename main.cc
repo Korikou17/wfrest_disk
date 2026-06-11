@@ -25,21 +25,17 @@ int main()
     }
 
 // 使用配置初始化 OSS
-    auto& cfg = Config::getInstance();
     OssManager::getInstance()->init(
-        cfg.ossEndpoint(),
-        cfg.ossAccessKeyId(),
-        cfg.ossAccessKeySecret(),
-        cfg.ossRegion(),
-        cfg.ossBucketName()
+        Config::getInstance().ossAccessKeyId(),
+        Config::getInstance().ossAccessKeySecret()
     );
-    
+
     CloudDiskServer server;
 
     // 注册路由
     server.register_routes();
 
-    if (server.start(cfg.serverPort()) == 0) {
+    if (server.start(8888) == 0) {
         server.list_routes();
         waitGroup.wait();
         server.stop();

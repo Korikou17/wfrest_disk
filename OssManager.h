@@ -17,11 +17,7 @@ public:
     OssManager& operator=(const OssManager &)=delete;
 
     // 从配置初始化 OSS 参数
-    void init(const string& endpoint,
-              const string& accessKeyId,
-              const string& accessKeySecret,
-              const string& region,
-              const string& bucketName);
+    void init(const string& accessKeyId,const string& accessKeySecret);
     
     bool upload(string filename,string content);
 
@@ -30,10 +26,7 @@ private:
     ~OssManager(){}
     static OssManager *m_pInstance;
 
-    string endpoint_;
     string accessKeyId_;
     string accessKeySecret_;
-    string region_;
-    string bucketName_;
 };
 
