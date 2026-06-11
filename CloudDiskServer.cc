@@ -1,6 +1,7 @@
 #include "CloudDiskServer.h"
 #include "CryptoUtil.h"
 #include "common.h"
+#include "OssManager.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <wfrest/PathUtil.h>
@@ -344,7 +345,9 @@ void CloudDiskServer::register_file_module()
                 string dir_path="file/"+username+"";
                 string file_path=dir_path+"/"+basename;
                 mkdir(dir_path.c_str(),0755);
+
                 resp->Save(file_path, move(content));
+                OssManager::getInstance()->upload(file_path,content);
                 
                 json result;
                 int fileid=cursor->get_insert_id();

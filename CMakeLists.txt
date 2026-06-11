@@ -17,20 +17,24 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../)
 add_executable(server
     CryptoUtil.cc
     CloudDiskServer.cc
+    OssManager.cc
     main.cc
 )
 
 # 设置编译选项
 # PRIVATE: 传播属性，一般填PRIVATE
 target_compile_options(server PRIVATE
+    -fno-rtti
     -g
 )
 
 # -lcrypto -lssl -ljwt -lwfrest
-target_link_libraries(server PRIVATE 
+target_link_libraries(server PRIVATE
+    alibabacloud-oss-cpp-sdk
+    curl
     crypto
+    pthread
     ssl
     jwt
     wfrest
-    workflow
 )
