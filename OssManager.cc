@@ -26,24 +26,14 @@ void OssManager::destroyInstance()
         }
     }
 
-void OssManager::init(const string& accessKeyId,const string& accessKeySecret)
-{
-    accessKeyId_     = accessKeyId;
-    accessKeySecret_ = accessKeySecret;
-}
 
 bool OssManager::upload(string filename,string content)
 {
-    string endpoint_ ="oss-cn-wuhan-lr.aliyuncs.com";
-    string region_ = "cn-wuhan";
     string bucketName_ = "korikou";
-    ClientConfiguration conf;
-    OssClient client(endpoint_, accessKeyId_, accessKeySecret_, conf);
-    client.SetRegion(region_);
-
+    m_client.SetRegion("cn-wuhan");
     shared_ptr<iostream> stream = make_shared<stringstream>(move(content));
     PutObjectRequest request(bucketName_, filename, stream);
-    auto outcome = client.PutObject(request);
+    auto outcome = m_client.PutObject(request);
     if (!outcome.isSuccess()) {
         cout << "PutObject FAILED"
             << ", code:" << outcome.error().Code()

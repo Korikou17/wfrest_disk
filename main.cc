@@ -24,11 +24,6 @@ int main()
         return -1;
     }
 
-// 使用配置初始化 OSS
-    OssManager::getInstance()->init(
-        Config::getInstance().ossAccessKeyId(),
-        Config::getInstance().ossAccessKeySecret()
-    );
 
     CloudDiskServer server;
 
