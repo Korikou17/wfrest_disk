@@ -24,7 +24,7 @@ int main()
         return -1;
     }
 
-    // 使用配置初始化 OSS
+// 使用配置初始化 OSS
     auto& cfg = Config::getInstance();
     OssManager::getInstance()->init(
         cfg.ossEndpoint(),
@@ -33,7 +33,7 @@ int main()
         cfg.ossRegion(),
         cfg.ossBucketName()
     );
-
+    
     CloudDiskServer server;
 
     // 注册路由
