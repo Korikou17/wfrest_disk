@@ -15,7 +15,7 @@ public:
     OssManager(const OssManager&)=delete;
     OssManager& operator=(const OssManager &)=delete;
     
-    bool upload(string filename,string content);
+    bool upload(string oss_name,string file_name);
 private:
     OssManager()
     :conf()

@@ -18,13 +18,6 @@ int main()
     signal(SIGINT, sig_handler);
     srand(time(NULL)); // 设置随机种子
 
-    // 加载配置文件
-    if (!Config::getInstance().load("config.json")) {
-        cerr << "Error: Failed to load config.json!" << endl;
-        return -1;
-    }
-
-
     CloudDiskServer server;
 
     // 注册路由

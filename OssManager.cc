@@ -11,13 +11,11 @@ OssManager &OssManager::getInstance()
     }
 
 
-bool OssManager::upload(string filename,string content)
+bool OssManager::upload(string oss_name,string file_name)
 {
     string bucketName_ = "korikou";
     m_client.SetRegion("cn-wuhan");
-    shared_ptr<iostream> stream = make_shared<stringstream>(move(content));
-    PutObjectRequest request(bucketName_, filename, stream);
-    auto outcome = m_client.PutObject(request);
+    auto outcome = m_client.PutObject(bucketName_,oss_name,file_name);
     if (!outcome.isSuccess()) {
         cout << "PutObject FAILED"
             << ", code:" << outcome.error().Code()

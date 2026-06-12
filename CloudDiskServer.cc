@@ -1,4 +1,5 @@
 #include "CloudDiskServer.h"
+#include "Producer.h"
 #include "Config.h"
 #include "CryptoUtil.h"
 #include "common.h"
@@ -17,7 +18,6 @@ using namespace wfrest;
 using namespace protocol;
 using json = nlohmann::json;
 
-// 数据库的URL（从配置文件读取）
 static const string DatabaseURL = "mysql://root:123@localhost/disk";
 static const int RetryMax = 3;
 
@@ -347,9 +347,11 @@ void CloudDiskServer::register_file_module()
                 string file_path=dir_path+"/"+basename;
                 mkdir(dir_path.c_str(),0755);
 
-                resp->Save(file_path, move(content));
-                OssManager::getInstance().upload(file_path,content);
-                
+                resp->Save(file_path, move(content),[file_path](const FileIOArgs *){
+                    Producer producer;
+                    producer.send_msg(file_path);
+                });
+                    
                 json result;
                 int fileid=cursor->get_insert_id();
                 result["status"]="success";

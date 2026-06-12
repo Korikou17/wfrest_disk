@@ -13,13 +13,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # 设置可执行程序生成的路径
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../)
 
-# 生成的可执行程序
+# 生成的可执行程序1
 add_executable(server
     Config.cc
     CryptoUtil.cc
     CloudDiskServer.cc
-    OssManager.cc
     main.cc
+    Producer.cc
 )
 
 # 设置编译选项
@@ -38,4 +38,31 @@ target_link_libraries(server PRIVATE
     ssl
     jwt
     wfrest
+    SimpleAmqpClient
+)
+
+# 生成的可执行程序2
+add_executable(consumer
+    OssManager.cc
+    Consumer.cc
+    Config.cc
+)
+
+# 设置编译选项
+# PRIVATE: 传播属性，一般填PRIVATE
+target_compile_options(consumer PRIVATE
+    -fno-rtti
+    -g
+)
+
+# -lcrypto -lssl -ljwt -lwfrest
+target_link_libraries(consumer PRIVATE
+    alibabacloud-oss-cpp-sdk
+    curl
+    crypto
+    pthread
+    ssl
+    jwt
+    wfrest
+    SimpleAmqpClient
 )
