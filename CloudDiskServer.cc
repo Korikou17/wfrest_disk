@@ -320,48 +320,47 @@ void CloudDiskServer::register_file_module()
             return;
         }
         
-        const Form& formData = req->form();
-        for (const auto& [key, file] : formData) {
-            string filename=file.first;
-            string content=file.second;
+        Form& formData = req->form();
+        for (auto& [key, file] : formData) {
+            string filename = move(file.first);
+            string content = move(file.second);
             string basename = PathUtil::base(filename);
-            int size=content.size();
-            string hashcode = CryptoUtil::generate_hashcode(content.c_str(),size);
-            string sql = "INSERT INTO tbl_file (uid, filename, hashcode, size) VALUES (" 
-            + to_string(user.id) 
+            int size = content.size();
+            string hashcode = CryptoUtil::generate_hashcode(content.c_str(), size);
+            string sql = "INSERT INTO tbl_file (uid, filename, hashcode, size) VALUES ("
+            + to_string(user.id)
             + ",'" + basename + "'"
-            + ",'" + hashcode + "'" 
+            + ",'" + hashcode + "'"
             + "," + to_string(size) + ");";
             string username = user.username;
-            resp->MySQL(DatabaseURL,sql,[username,basename,content,resp](MySQLResultCursor *cursor){
-                if(cursor->get_cursor_status()!=MYSQL_STATUS_OK||cursor->get_affected_rows()!=1)
-                {
-                    json result;
-                    result["status"]="error";
-                    result["message"]="内部服务器错误";
-                    resp->Json(result.dump());
-                    resp->set_status(500);
-                    return;
-                }
-                string dir_path="file/"+username+"";
-                string file_path=dir_path+"/"+basename;
-                mkdir(dir_path.c_str(),0755);
+            string dir_path = "file/" + username;
+            string file_path = dir_path + "/" + basename;
+            mkdir(dir_path.c_str(), 0755);
 
-                resp->Save(file_path, move(content),[file_path](const FileIOArgs *){
+            resp->Save(file_path, move(content), [file_path, sql, basename, resp](const FileIOArgs *){
+                resp->MySQL(DatabaseURL, sql, [file_path, basename, resp](MySQLResultCursor *cursor){
+                    if(cursor->get_cursor_status() != MYSQL_STATUS_OK || cursor->get_affected_rows() != 1)
+                    {
+                        json result;
+                        result["status"] = "error";
+                        result["message"] = "内部服务器错误";
+                        resp->Json(result.dump());
+                        resp->set_status(500);
+                        return;
+                    }
                     Producer producer;
                     producer.send_msg(file_path);
+
+                    json result;
+                    int fileid = cursor->get_insert_id();
+                    result["status"] = "success";
+                    result["message"] = "上传成功";
+                    result["data"]["fileId"] = fileid;
+                    result["data"]["filename"] = basename;
+                    resp->Json(result.dump());
+                    resp->set_status(200);
+                    resp->add_header_pair("Content-Type", "application/json");
                 });
-                    
-                json result;
-                int fileid=cursor->get_insert_id();
-                result["status"]="success";
-                result["message"]="上传成功";
-                result["data"]["fileId"]=fileid;
-                result["data"]["filename"]=basename;
-                resp->Json(result.dump());
-                resp->set_status(200);
-                resp->add_header_pair("Content-Type","application/json");
-                return;
             });
         }
     });
