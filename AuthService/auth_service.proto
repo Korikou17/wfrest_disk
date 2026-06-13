@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+// ==================== 注册 ====================
+message RegisterReq {
+    string username = 1;
+    string password = 2;
+    string confirm  = 3;
+}
+
+// ==================== 登录 ====================
+message LoginReq {
+    string username = 1;
+    string password = 2;
+}
+
+// ==================== 通用认证响应(注册/登录复用) ====================
+message AuthResp {
+    // code:与前端保持一致
+    //200：登录成功
+    //201：注册成功
+    //400:用户名和密码不能为空\两次输入的密码不一致
+    //401:用户名或密码错误
+    //409:用户名已存在
+    //500:内部服务器错误
+    int32  code       = 1;
+    string message    = 2;
+    int32  user_id    = 3;   // 成功时返回
+    string username   = 4;   // 成功时返回
+    string token      = 5;   // 仅 login 成功时返回
+    string token_type = 6;   // 仅 login 成功时返回 "Bearer"
+}
+
+// ==================== Token 验证 ====================
+message VerifyTokenReq {
+    string token = 1;          // "Bearer " 前缀已由调用方剥离
+}
+
+message VerifyTokenResp {
+    int32  code       = 1;    // 0=有效, 1=无效/过期, 2=内部错误
+    string message    = 2;
+    bool   valid      = 3;
+    int32  user_id    = 4;
+    string username   = 5;
+    string created_at = 6;
+}
+
+// ==================== 服务定义 ====================
+service AuthService {
+    rpc Register    (RegisterReq)     returns (AuthResp);
+    rpc Login       (LoginReq)        returns (AuthResp);
+    rpc VerifyToken (VerifyTokenReq)  returns (VerifyTokenResp);
+}

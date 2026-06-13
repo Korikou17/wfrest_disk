@@ -1,36 +1,39 @@
-# 设置CMake的最小版本
+# ===================================================
+# CloudDisk 统一构建文件
+# 包含三个 target:
+#   1. api_gateway  — HTTP API 网关 (端口 8888)
+#   2. auth_service — 认证微服务   (SRPC 端口 1412)
+#   3. oss_server   — OSS 上传服务 (RabbitMQ 消费者)
+# ===================================================
 cmake_minimum_required(VERSION 3.15)
-
-# 项目名称
-#   项目可以包含多个目标(target)
-#   target: 可执行程序, 静态库, 动态库
 project(CloudDisk)
 
-# 指定C++的版本: -std=c++17
+# ------------------ C++ 标准 ------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 设置可执行程序生成的路径
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../)
+# ------------------ 输出目录：所有二进制生成到项目根目录 ------------------
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 
-# 生成的可执行程序1
-add_executable(server
-    Config.cc
-    CryptoUtil.cc
-    CloudDiskServer.cc
+# ------------------ 全局头文件搜索路径 ------------------
+include_directories(${PROJECT_SOURCE_DIR})             # common.h, CloudDiskServer.h
+include_directories(${PROJECT_SOURCE_DIR}/AuthService) # CryptoUtil.h, auth_service.*.h
+include_directories(${PROJECT_SOURCE_DIR}/OssService)  # Config.h, OssManager.h
+
+# ==================== Target 1: api_gateway ====================
+add_executable(api_gateway
     main.cc
-    Producer.cc
+    CloudDiskServer.cc
+    AuthService/CryptoUtil.cc
+    AuthService/auth_service.pb.cc
 )
 
-# 设置编译选项
-# PRIVATE: 传播属性，一般填PRIVATE
-target_compile_options(server PRIVATE
+target_compile_options(api_gateway PRIVATE
     -fno-rtti
     -g
 )
 
-# -lcrypto -lssl -ljwt -lwfrest
-target_link_libraries(server PRIVATE
+target_link_libraries(api_gateway PRIVATE
     alibabacloud-oss-cpp-sdk
     curl
     crypto
@@ -39,30 +42,55 @@ target_link_libraries(server PRIVATE
     jwt
     wfrest
     SimpleAmqpClient
+    srpc
+    lz4
+    snappy
+    protobuf
+    workflow
 )
 
-# 生成的可执行程序2
-add_executable(consumer
-    OssManager.cc
-    Consumer.cc
-    Config.cc
+# ==================== Target 2: auth_service ====================
+add_executable(auth_service
+    AuthService/Auth_server.cc
+    AuthService/CryptoUtil.cc
+    AuthService/auth_service.pb.cc
 )
 
-# 设置编译选项
-# PRIVATE: 传播属性，一般填PRIVATE
-target_compile_options(consumer PRIVATE
+target_compile_options(auth_service PRIVATE
     -fno-rtti
     -g
 )
 
-# -lcrypto -lssl -ljwt -lwfrest
-target_link_libraries(consumer PRIVATE
-    alibabacloud-oss-cpp-sdk
+target_link_libraries(auth_service PRIVATE
     curl
     crypto
     pthread
     ssl
     jwt
     wfrest
+    srpc
+    lz4
+    snappy
+    protobuf
+    workflow
+)
+
+# ==================== Target 3: oss_server ====================
+add_executable(oss_server
+    OssService/Ossuploader.cc
+    OssService/Config.cc
+    OssService/OssManager.cc
+)
+
+target_compile_options(oss_server PRIVATE
+    -fno-rtti
+    -g
+)
+
+target_link_libraries(oss_server PRIVATE
+    alibabacloud-oss-cpp-sdk
+    curl
+    crypto
+    pthread
     SimpleAmqpClient
 )

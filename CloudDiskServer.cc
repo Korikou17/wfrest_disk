@@ -1,9 +1,6 @@
 #include "CloudDiskServer.h"
-#include "Producer.h"
-#include "Config.h"
 #include "CryptoUtil.h"
 #include "common.h"
-#include "OssManager.h"
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <wfrest/PathUtil.h>
@@ -11,16 +8,35 @@
 #include <workflow/MySQLResult.h>
 #include <workflow/Workflow.h>
 #include <workflow/mysql_types.h>
+#include <SimpleAmqpClient/SimpleAmqpClient.h>
+#include <srpc/rpc_define.h>
+#include "auth_service.srpc.h"
 
 using namespace std;
 using namespace std::placeholders;
 using namespace wfrest;
 using namespace protocol;
 using json = nlohmann::json;
+using namespace AmqpClient;
+using namespace AuthService;
+
 
 static const string DatabaseURL = "mysql://root:123@localhost/disk";
 static const int RetryMax = 3;
 
+
+void send_msg(string file_path){
+        string host = "127.0.0.1";
+        int port = 5672;
+        string username = "guest";
+        string password = "guest";
+        string vhost = "/";
+        Channel::ptr_t channel = Channel::Create(host, port, username, password, vhost);
+        BasicMessage::ptr_t message = BasicMessage::Create(file_path);
+        string exchange = "oss.direct"; // 交换机
+        string routingKey = "oss"; // 消息的routingKey
+        channel->BasicPublish(exchange, routingKey, message); // 发布消息
+}
 
 void CloudDiskServer::register_routes()
 {
@@ -41,7 +57,7 @@ void CloudDiskServer::register_www_module()
 
 void CloudDiskServer::register_auth_module()
 {   
-    server_.POST("/api/v1/auth/register",[](const HttpReq *req,HttpResp *resp){
+    server_.POST("/api/v1/auth/register",[](const HttpReq *req,HttpResp *resp,SeriesWork *series){
         json data = json::parse(req->body());
         if(req->content_type()!=APPLICATION_JSON){
             json result;
@@ -65,46 +81,40 @@ void CloudDiskServer::register_auth_module()
             resp->Json(result.dump());
             return;
         }
-
-        if(password!=confirm)
-        {
+        const char *ip="127.0.0.1";
+        unsigned short port = 1412;
+        SRPCClient client(ip,port);
+        srpc::SRPCClientTask *task=client.create_Register_task([resp](AuthResp* response, srpc::RPCContext* context){
+            if (!context->success()) {
+                cerr << "error code: " << context->get_error()
+                << ", error msg: " << context->get_errmsg() << endl;
+            }
             json result;
-            result["status"]="error";
-            result["message"]="两次输入的密码不一致";
-            resp->set_status(400);
-            resp->Json(result.dump());
-            return;
-        }
-        
-        // hash
-        string salt = CryptoUtil::generate_salt();
-        string hashcode = CryptoUtil::hash_password(password, salt);
-
-        string sql = "INSERT INTO tbl_user (username, password, salt) VALUES ('" + username + "', '" + hashcode + "', '" + salt + "');";
-
-        resp->MySQL(DatabaseURL, sql, [username,resp](MySQLResultCursor* cursor) {
-            if (cursor->get_cursor_status() == MYSQL_STATUS_OK && cursor->get_affected_rows() == 1) {
-                int userid=cursor->get_insert_id();
-                json result;
+            if(response->code()==201)
+            {
+                resp->set_status(response->code());
                 result["status"]="success";
-                result["message"]="注册成功";
-                result["data"]["userId"]=userid;
-                result["data"]["username"]=username;
+                result["message"]=response->message();
+                result["data"]["userId"]=response->user_id();
+                result["data"]["username"]=response->username();
+                resp->Json(result.dump());
                 resp->set_header_pair("Content-Type","application/json");
-                resp->set_status(201);
-                resp->Json(result.dump());
+                return;
             }
-            else{
-                json result;
-                result["status"]="error";
-                result["message"]="用户名已存在";
-                resp->set_status(409);
-                resp->Json(result.dump());
-            }
+            result["status"]="error";
+            result["message"]=response->message();
+            resp->set_status(response->code());
+            resp->Json(result.dump());
         });
+        RegisterReq rpc_req;
+        rpc_req.set_username(username);
+        rpc_req.set_password(password);
+        rpc_req.set_confirm(confirm);
+        task->serialize_input(&rpc_req);
+        series->push_back(task);
     });
     
-    server_.POST("/api/v1/auth/login",[](const HttpReq *req,HttpResp *resp){
+    server_.POST("/api/v1/auth/login",[](const HttpReq *req,HttpResp *resp,SeriesWork *series){
         json data = json::parse(req->body());
         if(req->content_type()!=APPLICATION_JSON){
             json result;
@@ -114,7 +124,6 @@ void CloudDiskServer::register_auth_module()
             resp->Json(result.dump());
             return;
         }
-
         string username = data["username"];
         string password=data["password"];
 
@@ -128,62 +137,38 @@ void CloudDiskServer::register_auth_module()
             return;
         }
 
-
-        string sql = "SELECT * from tbl_user WHERE username='" + username + "';";
-
-        resp->MySQL(DatabaseURL, sql, [password,resp](MySQLResultCursor* cursor) {
-            if (cursor->get_cursor_status() != MYSQL_STATUS_GET_RESULT) {
-                json result;
-                result["status"]="error";
-                result["message"]="内部服务器错误";
-                resp->set_status(500);
-                resp->Json(result.dump());
-                return;
+        const char *ip="127.0.0.1";
+        unsigned short port = 1412;
+        SRPCClient client(ip,port);
+        srpc::SRPCClientTask *task=client.create_Login_task([resp](AuthResp* response, srpc::RPCContext* context){
+            if (!context->success()) {
+                cerr << "error code: " << context->get_error()
+                << ", error msg: " << context->get_errmsg() << endl;
             }
-
-            if (cursor->get_rows_count() != 1) {
-                json result;
-                result["status"]="error";
-                result["message"]="用户名或密码错误";
-                resp->Json(result.dump());
-                resp->set_status(401);
-                return;
-            }
-
-            vector<MySQLCell> record;
-            cursor->fetch_row(record);
-            User user;
-            user.id = record[0].as_int();
-            user.username = record[1].as_string();
-            string query_password = record[2].as_string();
-            string salt = record[3].as_string();
-            user.createdAt = record[4].as_datetime();
-
-            string hashcode = CryptoUtil::hash_password(password, salt);
-
-            if(hashcode!=query_password)
-            {
-                json result;
-                result["status"]="error";
-                result["message"]="用户名或密码错误";
-                resp->Json(result.dump());
-                resp->set_status(401);
-                return;
-            }
-            
-            string token=CryptoUtil::generate_token(user);
-
             json result;
-            result["status"]="success";
-            result["message"]="登录成功";
-            result["data"]["accessToken"]=token;
-            result["data"]["tokenType"]="Bearer";
-            result["data"]["user"]["userId"]=user.id;
-            result["data"]["user"]["username"]=user.username;
-            resp->set_header_pair("Content-Type","application/json");
-            resp->set_status(200);
+            if(response->code()==200)
+            {
+                result["status"]="success";
+                result["message"]=response->message();
+                result["data"]["accessToken"]=response->token();
+                result["data"]["tokenType"]=response->token_type();
+                result["data"]["user"]["userId"]=response->user_id();
+                result["data"]["user"]["username"]=response->username();
+                resp->set_header_pair("Content-Type","application/json");
+                resp->set_status(200);
+                resp->Json(result.dump());
+                return;
+            }
+            result["status"]="error";
+            result["message"]=response->message();
+            resp->set_status(response->code());
             resp->Json(result.dump());
         });
+        RegisterReq rpc_req;
+        rpc_req.set_username(username);
+        rpc_req.set_password(password);
+        task->serialize_input(&rpc_req);
+        series->push_back(task);
     });
 }
 
@@ -348,8 +333,8 @@ void CloudDiskServer::register_file_module()
                         resp->set_status(500);
                         return;
                     }
-                    Producer producer;
-                    producer.send_msg(file_path);
+
+                    send_msg(file_path);
 
                     json result;
                     int fileid = cursor->get_insert_id();
